@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 직원 앱 1차 수락. HQ API + 화면 표식.
 set -euo pipefail
-HQ="${HQ_API:-http://127.0.0.1:3000}"
-APP="${APP_URL:-http://127.0.0.1:3010}"
+HQ="${HQ_API:-${HQ_BASE:-http://127.0.0.1:30000}}"
+APP="${TECH_BASE:-${APP_URL:-http://127.0.0.1:30100}}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PASS=0; FAIL=0
 pass(){ echo "PASS  $1"; PASS=$((PASS+1)); }
