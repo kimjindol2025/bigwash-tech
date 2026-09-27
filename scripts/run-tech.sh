@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 현장. 기본 30100. TECH_PORT가 있으면 그 포트만. 없으면 30100–30199.
+# 현장. 기본 40000. TECH_PORT가 있으면 그 포트만. 없으면 40000–49999.
 # HQ_API 없으면 http://127.0.0.1:30000 을 확인하고, 없으면 종료한다.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,7 +30,7 @@ if [[ -n "${TECH_PORT:-}" ]]; then
 else
   chosen=""
   busy=""
-  for p in $(seq 30100 30199); do
+  for p in $(seq 40000 49999); do
     if port_free "$p"; then
       chosen="$p"
       break
@@ -38,7 +38,7 @@ else
     busy="${busy} ${p}"
   done
   if [[ -z "$chosen" ]]; then
-    echo "[bigwash-tech] no free port in 30100-30199. in use:${busy}" >&2
+    echo "[bigwash-tech] no free port in 40000-49999. in use:${busy}" >&2
     exit 1
   fi
 fi

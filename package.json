@@ -5,7 +5,7 @@
   "description": "빅워시 현장 — 본사 HQ API를 호출하는 직원 앱",
   "scripts": {
     "start": "bash scripts/run-tech.sh",
-    "test": "bash tests/accept.sh"
+    "test": "bash tests/accept.sh && bash tests/tech-phase2.sh"
   },
   "license": "MIT"
 }

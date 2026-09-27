@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
-const PORT = Number(process.env.TECH_PORT || process.env.PORT || 30100);
+const PORT = Number(process.env.TECH_PORT || process.env.PORT || 40000);
 const HQ = (process.env.HQ_API || 'http://127.0.0.1:30000').replace(/\/$/, '');
 const ROOT = path.join(__dirname, 'public');
 

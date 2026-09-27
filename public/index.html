@@ -8,7 +8,8 @@
     :root { --bg:#0b1220; --card:#162033; --line:#243149; --text:#e7eefc; --muted:#8fa3c1; --accent:#3de0c7; --danger:#ff6b7a; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:"Segoe UI",-apple-system,"Noto Sans KR",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-    header { padding:12px 14px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,18,32,.94); z-index:10; display:flex; justify-content:space-between; align-items:center; }
+    header { padding:12px 14px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,18,32,.94); z-index:30; display:flex; justify-content:space-between; align-items:center; }
+    .stick { position:sticky; top:52px; z-index:20; }
     header h1 { font-size:16px; }
     main { padding:12px 12px 96px; max-width:720px; margin:0 auto; }
     body.detail main { padding-bottom:168px; }
@@ -36,8 +37,10 @@
     #dock .top { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
     #dock .settle { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
     .slots { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
-    .slot { aspect-ratio:1; border:1px dashed var(--line); border-radius:8px; overflow:hidden; position:relative; background:#0e1626; }
-    .slot.filled { border-style:solid; border-color:var(--accent); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px; }
+    .slot { aspect-ratio:1; border:1px dashed var(--line); border-radius:8px; overflow:hidden; position:relative; background:#0e1626; display:flex; align-items:center; justify-content:center; }
+    .slot .plus { font-size:32px; color:var(--accent); pointer-events:none; line-height:1; }
+    .slot img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    .warn { color:var(--danger); font-size:14px; margin-top:8px; }
     .slot input { position:absolute; inset:0; opacity:0; }
     #toast { position:fixed; left:12px; right:12px; bottom:180px; background:#1c283d; border:1px solid var(--accent); border-radius:10px; padding:10px; display:none; z-index:60; }
     #toast.show { display:block; }
@@ -105,7 +108,7 @@
     try {
       res = await fetch('/api' + path, { method: opt.method || 'GET', headers, body: opt.body });
     } catch (e) {
-      throw new Error('네트워크 실패');
+      throw new Error('HQ 연결 실패');
     }
     const text = await res.text();
     let data = null;
@@ -135,8 +138,9 @@
   function listHtml(rows, empty) {
     if (!rows.length) return '<div class="empty">' + empty + '</div>';
     return rows.map((t) => '<button type="button" class="hit card" data-open="' + esc(t.ticket_id) + '"><b>' +
-      esc((t.scheduled_at || '').slice(11, 16) || t.scheduled_at) + '</b> ' + esc(t.customer_name) +
-      '<div class="muted">' + esc(t.address) + '</div><div class="muted">' + esc(t.equipment_name) + '</div>' +
+      esc((t.scheduled_at || t.visit_at || '').slice(11, 16) || (t.scheduled_at || '')) + '</b> ' +
+      esc(t.customer_display_name || t.customer_name) +
+      '<div class="muted">' + esc(String(t.address || '').slice(0, 20)) + '</div>' +
       '<div style="margin-top:6px"><span class="badge">' + esc(STATUS[t.status] || t.status) + '</span>' +
       '<span class="badge">' + esc(t.settlement_status || '정산없음') + '</span></div></button>').join('');
   }
@@ -182,9 +186,13 @@
       const free = hint.warranty === 'free';
       $('btnNa').hidden = !free;
       const cart = (bundle.cart || []).filter((l) => Number(l.qty) > 0);
+      const asg = bundle.assignees || [];
+      const companion = asg.some((a) => a.user_id === user.user_id) && bundle.ticket.assignee_id !== user.user_id &&
+        !asg.some((a) => a.user_id === user.user_id && a.is_primary === 'true');
       el.innerHTML =
         '<button type="button" id="back" class="btn">목록</button>' +
-        '<div class="card"><h2>' + esc(c.display_name || '') + '</h2>' +
+        '<div class="card stick"><h2>' + esc(c.display_name || '') +
+        (companion ? ' <span class="badge">동행</span>' : '') + '</h2>' +
         '<p><a class="tel" href="tel:' + esc(c.primary_phone || '') + '">' + esc(c.primary_phone || '') + '</a></p>' +
         '<p>' + esc(c.address || '') + '</p>' +
         '<p class="muted">방문메모 ' + esc(c.visit_note || '-') + '</p>' +
@@ -239,13 +247,18 @@
   function photoBlock(photos) {
     const cell = (side, slot) => {
       const hit = photos.find((p) => p.side === side && Number(p.slot) === slot);
-      return '<label class="slot' + (hit ? ' filled' : '') + '">' + (hit ? '있음' : '<span class="muted">' + slot + '</span>') +
+      return '<label class="slot">' +
+        (hit ? '<img alt="" data-pid="' + esc(hit.photo_id) + '" />' : '<span class="plus">+</span>') +
         '<input type="file" accept="image/*" capture="environment" data-side="' + side + '" data-slot="' + slot + '" /></label>';
     };
     let before = '', after = '';
     for (let i = 1; i <= 5; i++) { before += cell('before', i); after += cell('after', i); }
+    const bc = photos.filter((p) => p.side === 'before').length;
+    const ac = photos.filter((p) => p.side === 'after').length;
+    const warn = '<p id="photoWarn" class="warn"' + ((bc < 3 || ac < 3) ? '' : ' hidden') +
+      '>전 또는 후 사진이 3장 미만입니다. 완료는 가능합니다.</p>';
     return '<div class="card"><h3>수리 전</h3><div class="slots">' + before + '</div><h3 style="margin-top:10px">수리 후</h3><div class="slots">' + after + '</div>' +
-      '<p class="muted" style="margin-top:6px">3장 미만이면 경고만 하고 완료는 됩니다.</p></div>';
+      warn + '</div>';
   }
 
   function wireCart() {
@@ -338,6 +351,9 @@
   }
 
   function wirePhotos() {
+    document.querySelectorAll('img[data-pid]').forEach((img) => {
+      api('/hq/photos/' + img.dataset.pid + '/content').then((c) => { img.src = c.data_url; }).catch((e) => toast(e.message, true));
+    });
     document.querySelectorAll('input[data-side]').forEach((inp) => {
       inp.onchange = async () => {
         const file = inp.files && inp.files[0];
@@ -383,7 +399,10 @@
     const photos = bundle.photos || [];
     const bc = photos.filter((p) => p.side === 'before').length;
     const ac = photos.filter((p) => p.side === 'after').length;
-    if (bc < 3 || ac < 3) toast('사진이 3장 미만입니다. 완료는 가능합니다.');
+    if (bc < 3 || ac < 3) {
+      const warn = $('photoWarn');
+      if (warn) { warn.hidden = false; warn.textContent = '전 또는 후 사진이 3장 미만입니다. 완료는 가능합니다.'; }
+    }
     const st = bundle.ticket.status;
     if (st === 'assigned' || st === 'hold') return toast('먼저 방문을 누르세요', true);
     showModal('<h3>완료</h3><label>조치</label><textarea id="doneMemo"></textarea><div class="row"><button type="button" id="dx">취소</button><button type="button" class="primary" id="ds">완료</button></div>');
