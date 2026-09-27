@@ -1,0 +1,11 @@
+{
+  "name": "bigwash-tech",
+  "version": "1.0.0",
+  "private": true,
+  "description": "빅워시 현장 — 본사 HQ API를 호출하는 직원 앱",
+  "scripts": {
+    "start": "node server.js",
+    "test": "bash tests/accept.sh"
+  },
+  "license": "MIT"
+}
